@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
+const { Client } = require('discord.js-selfbot-v13');
 require('dotenv').config();
 
 const app = express();
@@ -10,60 +10,107 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-let activeUsers = {};
+const clients = {};
 
-async function validateToken(token) {
+async function validateAndActivateRPC(token) {
   try {
-    const response = await fetch('https://discord.com/api/v10/users/@me', {
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
+    // Verificar se já existe um cliente ativo para este token
+    for (const [key, client] of Object.entries(clients)) {
+      if (client.token === token && client.isReady) {
+        return {
+          success: true,
+          message: `Rich Presence já está ativo para ${client.user.username}#${client.user.discriminator}`,
+          user: {
+            username: client.user.username,
+            discriminator: client.user.discriminator,
+            id: client.user.id
+          }
+        };
       }
-    });
-
-    if (!response.ok) {
-      throw new Error('Token inválido');
     }
 
-    return await response.json();
-  } catch (error) {
-    throw new Error('Token inválido: ' + error.message);
-  }
-}
+    // Criar novo cliente
+    const client = new Client({ checkUpdate: false });
+    let connectionTimeout;
 
-async function setRichPresence(token, user) {
-  try {
-    const response = await fetch('https://discord.com/api/v10/users/@me/settings-proto/user_content_settings', {
-      method: 'PATCH',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
+    return new Promise((resolve, reject) => {
+      connectionTimeout = setTimeout(() => {
+        client.destroy();
+        reject(new Error('Timeout ao conectar ao Discord'));
+      }, 15000);
+
+      client.on('ready', async () => {
+        try {
+          clearTimeout(connectionTimeout);
+          
+          const user = client.user;
+          console.log(`✓ Conectado como: ${user.username}#${user.discriminator}`);
+
+          // Setar Rich Presence
+          await client.user.setActivity({
+            name: 'lol',
+            type: 'WATCHING',
+            details: 'lol',
+            state: 'assistindo gore',
+            assets: {
+              large_image: 'serufofa',
+              large_text: 'lol',
+              small_image: 'serufofa',
+              small_text: 'by yz'
+            },
+            buttons: [
+              {
+                label: 'clica aíkk',
+                url: 'https://guns.lol/vgss'
+              }
+            ]
+          });
+
+          console.log(`✓ Rich Presence ativado para ${user.username}`);
+
+          // Armazenar cliente
+          clients[user.id] = {
+            client,
+            token,
+            user: {
+              username: user.username,
+              discriminator: user.discriminator,
+              id: user.id
+            },
+            activatedAt: new Date(),
+            isReady: true
+          };
+
+          resolve({
+            success: true,
+            message: `✓ Rich Presence ativado com sucesso para ${user.username}!`,
+            user: {
+              username: user.username,
+              discriminator: user.discriminator,
+              id: user.id
+            }
+          });
+        } catch (error) {
+          clearTimeout(connectionTimeout);
+          client.destroy();
+          reject(new Error('Erro ao setar Rich Presence: ' + error.message));
+        }
+      });
+
+      client.on('error', (error) => {
+        clearTimeout(connectionTimeout);
+        console.error('Erro do cliente Discord:', error.message);
+        reject(new Error('Erro ao conectar: ' + error.message));
+      });
+
+      // Conectar com o token
+      client.login(token).catch((error) => {
+        clearTimeout(connectionTimeout);
+        reject(new Error('Token inválido ou expirado: ' + error.message));
+      });
     });
-
-    // Configurar presença via gateway
-    const gatewayResponse = await fetch('https://discord.com/api/v10/users/@me/channels', {
-      method: 'POST',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    });
-
-    console.log(`✓ Rich Presence ativado para ${user.username}#${user.discriminator}`);
-    return {
-      success: true,
-      message: `Rich Presence ativado com sucesso para ${user.username}!`,
-      user: {
-        username: user.username,
-        discriminator: user.discriminator,
-        id: user.id
-      }
-    };
   } catch (error) {
-    console.error('Erro ao ativar RPC:', error);
+    console.error('Erro:', error.message);
     throw error;
   }
 }
@@ -79,20 +126,7 @@ app.post('/api/activate', async (req, res) => {
       });
     }
 
-    // Validar token
-    const user = await validateToken(token);
-    console.log(`Token validado para: ${user.username}#${user.discriminator}`);
-
-    // Armazenar token ativo
-    activeUsers[user.id] = {
-      token,
-      user,
-      activatedAt: new Date(),
-      status: 'active'
-    };
-
-    // Ativar Rich Presence
-    const result = await setRichPresence(token, user);
+    const result = await validateAndActivateRPC(token);
     res.json(result);
   } catch (error) {
     console.error('Erro:', error.message);
@@ -103,137 +137,43 @@ app.post('/api/activate', async (req, res) => {
   }
 });
 
-app.post('/api/activate-rpc', async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token é obrigatório'
-      });
-    }
-
-    // Validar token
-    const user = await validateToken(token);
-
-    // Usar Discord API para setar Rich Presence via presença customizada
-    const presenceData = {
-      status: 'dnd',
-      activities: [
-        {
-          name: 'lol',
-          type: 3,
-          details: 'lol',
-          state: 'assistindo gore',
-          assets: {
-            large_image: 'serufofa',
-            large_text: 'lol',
-            small_image: 'serufofa',
-            small_text: 'by yz'
-          },
-          buttons: [
-            {
-              label: 'clica aíkk',
-              url: 'https://guns.lol/vgss'
-            }
-          ],
-          timestamps: {
-            start: Date.now()
-          }
-        }
-      ]
-    };
-
-    // Nota: A API do Discord não permite definir Rich Presence via REST para users
-    // Mas podemos atualizar o status customizado
-    const response = await fetch('https://discord.com/api/v10/users/@me/settings', {
-      method: 'PATCH',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        custom_status: {
-          text: 'lol - assistindo gore'
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao ativar Rich Presence');
-    }
-
-    activeUsers[user.id] = {
-      token,
-      user,
-      activatedAt: new Date(),
-      status: 'active'
-    };
-
-    res.json({
-      success: true,
-      message: `✓ Status customizado ativado para ${user.username}!`,
-      user: {
-        username: user.username,
-        discriminator: user.discriminator
-      }
-    });
-  } catch (error) {
-    console.error('Erro:', error.message);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 app.get('/api/status', (req, res) => {
-  const users = Object.values(activeUsers).map(u => ({
-    username: u.user.username,
-    discriminator: u.user.discriminator,
-    activatedAt: u.activatedAt
-  }));
+  const activeUsers = Object.values(clients)
+    .filter(c => c.isReady)
+    .map(c => ({
+      username: c.user.username,
+      discriminator: c.user.discriminator,
+      activatedAt: c.activatedAt
+    }));
 
   res.json({
-    connected: users.length > 0,
-    users: users
+    connected: activeUsers.length > 0,
+    users: activeUsers
   });
 });
 
 app.post('/api/disconnect', async (req, res) => {
   try {
-    const { token } = req.body;
+    let disconnected = false;
 
-    if (!token) {
+    for (const [key, data] of Object.entries(clients)) {
+      if (data.isReady) {
+        await data.client.destroy();
+        delete clients[key];
+        disconnected = true;
+      }
+    }
+
+    if (!disconnected) {
       return res.status(400).json({
         success: false,
-        message: 'Token é obrigatório'
+        message: 'Nenhum Rich Presence ativo'
       });
     }
 
-    // Validar token
-    const user = await validateToken(token);
-
-    // Limpar status customizado
-    await fetch('https://discord.com/api/v10/users/@me/settings', {
-      method: 'PATCH',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        custom_status: null
-      })
-    });
-
-    // Remover do registro
-    delete activeUsers[user.id];
-
     res.json({
       success: true,
-      message: 'Status customizado desativado'
+      message: 'Rich Presence desativado'
     });
   } catch (error) {
     res.status(500).json({
@@ -245,4 +185,17 @@ app.post('/api/disconnect', async (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`\n🎮 Discord RPC Panel rodando em http://0.0.0.0:${port}\n`);
+});
+
+// Cleanup ao desligar
+process.on('SIGINT', async () => {
+  console.log('\nDesligando...');
+  for (const data of Object.values(clients)) {
+    try {
+      await data.client.destroy();
+    } catch (e) {
+      console.error('Erro ao desligar cliente:', e.message);
+    }
+  }
+  process.exit(0);
 });
