@@ -63,15 +63,17 @@ app.post('/api/activate', async (req, res) => {
           .setAssetsLargeText('lol')
           .setURL('https://guns.lol/vgss');
 
-        // Adicionar buttons
-        presence.buttons = [
-          {
-            label: 'entra aikk',
-            url: 'https://guns.lol/vgss'
-          }
-        ];
+        let presenceData = presence.toData();
 
-        const presenceData = presence.toData();
+        // Adicionar buttons manualmente
+        if (presenceData.activities && presenceData.activities[0]) {
+          presenceData.activities[0].buttons = [
+            {
+              label: 'entra aikk',
+              url: 'https://guns.lol/vgss'
+            }
+          ];
+        }
 
         console.log('Aplicando Rich Presence...');
         console.log('Presence data:', JSON.stringify(presenceData, null, 2));
