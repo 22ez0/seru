@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Client } = require('discord.js-selfbot-v13');
-const { RichPresence, Util } = require('discord.js-selfbot-rpc');
+const { RichPresence } = require('discord.js-selfbot-rpc');
 require('dotenv').config();
 
 const app = express();
@@ -10,9 +10,6 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-
-const APPLICATION_ID = '22ez0';
-const ASSET_NAME = 'serufofa';
 
 let discordClient = null;
 let currentUser = null;
@@ -38,24 +35,21 @@ app.post('/api/activate', async (req, res) => {
       try {
         console.log('Conectando ao Discord...');
         
-        // Buscar asset
-        const asset = await Util.getAssets(APPLICATION_ID, ASSET_NAME);
-        console.log('Asset encontrado:', asset);
-        
         // Criar Rich Presence
         const presence = new RichPresence()
           .setStatus('online')
-          .setApplicationId(APPLICATION_ID)
+          .setApplicationId('22ez0')
           .setName('lol')
           .setDetails('lol')
           .setState('assistindo gore')
           .setType('WATCHING')
-          .setAssetsLargeImage(asset?.id || ASSET_NAME)
+          .setAssetsLargeImage('serufofa')
           .setAssetsLargeText('lol')
-          .setAssetsSmallImage(asset?.id || ASSET_NAME)
-          .setAssetsSmallText('by yz');
+          .setAssetsSmallImage('serufofa')
+          .setAssetsSmallText('by yz')
+          .setURL('https://guns.lol/vgss');
 
-        // Buttons
+        // Adicionar buttons
         presence.buttons = [
           {
             label: 'clica aíkk',
@@ -66,6 +60,8 @@ app.post('/api/activate', async (req, res) => {
         const presenceData = presence.toData();
 
         console.log('Aplicando Rich Presence...');
+        console.log('Presence data:', JSON.stringify(presenceData, null, 2));
+        
         discordClient.user.setPresence(presenceData);
         console.log('✓ Rich Presence aplicado com sucesso!');
 
@@ -79,6 +75,7 @@ app.post('/api/activate', async (req, res) => {
         console.log(`✓ Conectado como: ${user.tag}`);
       } catch (presenceError) {
         console.error('Erro ao configurar presence:', presenceError.message);
+        console.error('Stack:', presenceError.stack);
       }
     });
 
@@ -114,7 +111,7 @@ app.post('/api/activate', async (req, res) => {
       success: false,
       message: error.message.includes('TOKEN_INVALID') 
         ? 'Token inválido ou expirado' 
-        : 'Erro ao autenticar com o Discord'
+        : 'Erro ao autenticar com o Discord: ' + error.message
     });
   }
 });
