@@ -1,0 +1,73 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Satoshi",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#421B49",
+    "accent": "#868E96",
+    "background": "#0A0A0A",
+    "textPrimary": "#0A0A0A",
+    "link": "#868E96"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Satoshi",
+      "heading": "Satoshi"
+    },
+    "fontStacks": {
+      "heading": [
+        "Satoshi",
+        "sans-serif"
+      ],
+      "body": [
+        "Satoshi",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Satoshi",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "16px",
+      "h2": "16px",
+      "body": "16px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "15px"
+  },
+  "components": {
+    "input": {
+      "borderColor": "#CCCCCC",
+      "borderRadius": "15px"
+    }
+  },
+  "images": {
+    "logo": "https://og.guns.lol/api/og?username=vgss&t=1763853850362",
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": "https://og.guns.lol/api/og?username=vgss&t=1763853850362"
+  },
+  "__framework_hints": [
+    "guns.lol"
+  ],
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "gamers and tech enthusiasts"
+  },
+  "designSystem": {
+    "framework": "unknown",
+    "componentLibrary": null
+  },
+  "confidence": {
+    "buttons": 0.9,
+    "colors": 0.9,
+    "overall": 0.9
+  }
+}
