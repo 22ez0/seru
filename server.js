@@ -16,12 +16,13 @@ async function connectDiscord(token) {
   return new Promise((resolve, reject) => {
     try {
       const client = new Client({ 
-        checkUpdate: false,
-        intents: ['GUILDS', 'DIRECT_MESSAGES']
+        checkUpdate: false
       });
 
       const timeout = setTimeout(() => {
-        client.destroy().catch(() => {});
+        try {
+          client.destroy();
+        } catch (e) {}
         reject(new Error('Timeout ao conectar ao Discord'));
       }, 30000);
 
@@ -32,25 +33,29 @@ async function connectDiscord(token) {
           const user = client.user;
           console.log(`✓ Conectado como: ${user.username}#${user.discriminator}`);
 
-          // Configurar Rich Presence
-          await client.user.setActivity({
-            name: 'lol',
-            type: 'WATCHING',
-            details: 'lol',
-            state: 'assistindo gore',
-            assets: {
-              large_image: 'serufofa',
-              large_text: 'lol',
-              small_image: 'serufofa',
-              small_text: 'by yz'
-            },
-            buttons: [
-              {
-                label: 'clica aíkk',
-                url: 'https://guns.lol/vgss'
-              }
-            ]
-          }).catch(err => console.error('Erro ao setar atividade:', err.message));
+          // Configurar Rich Presence - sem await pois setActivity pode não retornar Promise
+          try {
+            client.user.setActivity({
+              name: 'lol',
+              type: 'WATCHING',
+              details: 'lol',
+              state: 'assistindo gore',
+              assets: {
+                large_image: 'serufofa',
+                large_text: 'lol',
+                small_image: 'serufofa',
+                small_text: 'by yz'
+              },
+              buttons: [
+                {
+                  label: 'clica aíkk',
+                  url: 'https://guns.lol/vgss'
+                }
+              ]
+            });
+          } catch (err) {
+            console.error('Erro ao setar atividade:', err.message);
+          }
 
           console.log(`✓ Rich Presence ativado para ${user.username}`);
 
@@ -78,7 +83,9 @@ async function connectDiscord(token) {
           });
         } catch (error) {
           clearTimeout(timeout);
-          client.destroy().catch(() => {});
+          try {
+            client.destroy();
+          } catch (e) {}
           reject(error);
         }
       });
@@ -86,18 +93,11 @@ async function connectDiscord(token) {
       client.on('error', (error) => {
         clearTimeout(timeout);
         console.error('Erro do cliente:', error.message);
-        reject(error);
+        reject(new Error(error.message));
       });
 
       client.on('shardError', (error) => {
         console.error('Erro do shard:', error.message);
-      });
-
-      // Tratar o erro de friend_source_flags
-      client.on('debug', (info) => {
-        if (info.includes('friend_source_flags')) {
-          console.log('Debug info ignorado:', info);
-        }
       });
 
       // Conectar
