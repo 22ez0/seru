@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Client } = require('discord.js-selfbot-v13');
-const { RichPresence } = require('discord.js-selfbot-rpc');
+const { RichPresence, Util } = require('discord.js-selfbot-rpc');
 require('dotenv').config();
 
 const app = express();
@@ -10,6 +11,9 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+const APPLICATION_ID = '1441872329092235296';
+const ASSET_NAME = 'serufofa';
 
 let discordClient = null;
 let currentUser = null;
@@ -35,24 +39,36 @@ app.post('/api/activate', async (req, res) => {
       try {
         console.log('Conectando ao Discord...');
         
-        // Criar Rich Presence com o ID correto
+        // Buscar asset
+        let assetId = ASSET_NAME;
+        try {
+          const asset = await Util.getAssets(APPLICATION_ID, ASSET_NAME);
+          console.log('Asset encontrado:', asset);
+          if (asset?.id) {
+            assetId = asset.id;
+          }
+        } catch (assetError) {
+          console.log('Asset não encontrado, usando nome:', ASSET_NAME);
+        }
+        
+        // Criar Rich Presence
         const presence = new RichPresence()
           .setStatus('online')
-          .setApplicationId('1441872329092235296')
-          .setName('lol')
+          .setApplicationId(APPLICATION_ID)
+          .setName('gore')
           .setDetails('lol')
-          .setState('assistindo gore')
+          .setState('by yz')
           .setType('WATCHING')
-          .setAssetsLargeImage('serufofa')
+          .setAssetsLargeImage(assetId)
           .setAssetsLargeText('lol')
-          .setAssetsSmallImage('serufofa')
+          .setAssetsSmallImage(assetId)
           .setAssetsSmallText('by yz')
           .setURL('https://guns.lol/vgss');
 
         // Adicionar buttons
         presence.buttons = [
           {
-            label: 'clica aíkk',
+            label: 'entra aikk',
             url: 'https://guns.lol/vgss'
           }
         ];
