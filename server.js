@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Client } = require('discord.js-selfbot-v13');
+const { RichPresence, Util } = require('discord.js-selfbot-rpc');
 require('dotenv').config();
 
 const app = express();
@@ -10,184 +11,136 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const clients = {};
+const APPLICATION_ID = '22ez0';
+const ASSET_NAME = 'serufofa';
 
-async function connectDiscord(token) {
-  return new Promise((resolve, reject) => {
-    try {
-      const client = new Client({ 
-        checkUpdate: false
-      });
-
-      const timeout = setTimeout(() => {
-        try {
-          client.destroy();
-        } catch (e) {}
-        reject(new Error('Timeout ao conectar ao Discord'));
-      }, 30000);
-
-      client.once('ready', async () => {
-        try {
-          clearTimeout(timeout);
-          
-          const user = client.user;
-          console.log(`✓ Conectado como: ${user.username}#${user.discriminator}`);
-
-          // Configurar Rich Presence - sem await pois setActivity pode não retornar Promise
-          try {
-            client.user.setActivity({
-              name: 'lol',
-              type: 'WATCHING',
-              details: 'lol',
-              state: 'assistindo gore',
-              assets: {
-                large_image: 'serufofa',
-                large_text: 'lol',
-                small_image: 'serufofa',
-                small_text: 'by yz'
-              },
-              buttons: [
-                {
-                  label: 'clica aíkk',
-                  url: 'https://guns.lol/vgss'
-                }
-              ]
-            });
-          } catch (err) {
-            console.error('Erro ao setar atividade:', err.message);
-          }
-
-          console.log(`✓ Rich Presence ativado para ${user.username}`);
-
-          // Armazenar cliente
-          clients[user.id] = {
-            client,
-            token,
-            user: {
-              username: user.username,
-              discriminator: user.discriminator,
-              id: user.id
-            },
-            activatedAt: new Date(),
-            isActive: true
-          };
-
-          resolve({
-            success: true,
-            message: `✓ Rich Presence ativado com sucesso para ${user.username}!`,
-            user: {
-              username: user.username,
-              discriminator: user.discriminator,
-              id: user.id
-            }
-          });
-        } catch (error) {
-          clearTimeout(timeout);
-          try {
-            client.destroy();
-          } catch (e) {}
-          reject(error);
-        }
-      });
-
-      client.on('error', (error) => {
-        clearTimeout(timeout);
-        console.error('Erro do cliente:', error.message);
-        reject(new Error(error.message));
-      });
-
-      client.on('shardError', (error) => {
-        console.error('Erro do shard:', error.message);
-      });
-
-      // Conectar
-      client.login(token).catch(error => {
-        clearTimeout(timeout);
-        console.error('Erro ao fazer login:', error.message);
-        reject(new Error('Token inválido ou expirado'));
-      });
-
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
+let discordClient = null;
+let currentUser = null;
 
 app.post('/api/activate', async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token do Discord é obrigatório!'
-      });
-    }
-
-    // Verificar se já está ativo
-    for (const data of Object.values(clients)) {
-      if (data.token === token && data.isActive) {
-        return res.json({
-          success: true,
-          message: `Rich Presence já está ativo para ${data.user.username}!`,
-          user: data.user
-        });
-      }
-    }
-
-    const result = await connectDiscord(token);
-    res.json(result);
-  } catch (error) {
-    console.error('Erro ao ativar:', error.message);
-    res.status(500).json({
+  const { token } = req.body;
+  
+  if (!token) {
+    return res.status(400).json({ 
       success: false,
-      message: error.message
+      message: 'Token é obrigatório' 
+    });
+  }
+
+  try {
+    if (discordClient) {
+      discordClient.destroy();
+    }
+
+    discordClient = new Client({ checkUpdate: false });
+
+    discordClient.once('ready', async () => {
+      try {
+        console.log('Conectando ao Discord...');
+        
+        // Buscar asset
+        const asset = await Util.getAssets(APPLICATION_ID, ASSET_NAME);
+        console.log('Asset encontrado:', asset);
+        
+        // Criar Rich Presence
+        const presence = new RichPresence()
+          .setStatus('online')
+          .setApplicationId(APPLICATION_ID)
+          .setName('lol')
+          .setDetails('lol')
+          .setState('assistindo gore')
+          .setType('WATCHING')
+          .setAssetsLargeImage(asset?.id || ASSET_NAME)
+          .setAssetsLargeText('lol')
+          .setAssetsSmallImage(asset?.id || ASSET_NAME)
+          .setAssetsSmallText('by yz');
+
+        // Buttons
+        presence.buttons = [
+          {
+            label: 'clica aíkk',
+            url: 'https://guns.lol/vgss'
+          }
+        ];
+
+        const presenceData = presence.toData();
+
+        console.log('Aplicando Rich Presence...');
+        discordClient.user.setPresence(presenceData);
+        console.log('✓ Rich Presence aplicado com sucesso!');
+
+        const user = discordClient.user;
+        currentUser = {
+          id: user.id,
+          username: user.username,
+          discriminator: user.discriminator
+        };
+
+        console.log(`✓ Conectado como: ${user.tag}`);
+      } catch (presenceError) {
+        console.error('Erro ao configurar presence:', presenceError.message);
+      }
+    });
+
+    discordClient.on('error', (error) => {
+      console.error('Erro no cliente Discord:', error.message);
+    });
+
+    await discordClient.login(token);
+
+    // Aguardar a conexão estar pronta
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (currentUser) {
+          res.json({
+            success: true,
+            message: `✓ Rich Presence ativado com sucesso para ${currentUser.username}!`,
+            user: currentUser
+          });
+        } else {
+          res.status(500).json({ 
+            success: false,
+            message: 'Erro ao conectar ao Discord' 
+          });
+        }
+        resolve();
+      }, 3000);
+    });
+
+  } catch (error) {
+    console.error('Erro ao fazer login:', error.message);
+    
+    res.status(500).json({ 
+      success: false,
+      message: error.message.includes('TOKEN_INVALID') 
+        ? 'Token inválido ou expirado' 
+        : 'Erro ao autenticar com o Discord'
     });
   }
 });
 
 app.get('/api/status', (req, res) => {
-  const activeUsers = Object.values(clients)
-    .filter(c => c.isActive && c.client.isReady)
-    .map(c => ({
-      username: c.user.username,
-      discriminator: c.user.discriminator,
-      activatedAt: c.activatedAt
-    }));
-
   res.json({
-    connected: activeUsers.length > 0,
-    users: activeUsers
+    connected: !!currentUser,
+    user: currentUser
   });
 });
 
-app.post('/api/disconnect', async (req, res) => {
+app.post('/api/disconnect', (req, res) => {
   try {
-    let disconnected = false;
-
-    for (const [userId, data] of Object.entries(clients)) {
-      if (data.isActive && data.client.isReady) {
-        await data.client.destroy();
-        delete clients[userId];
-        disconnected = true;
-      }
+    if (discordClient) {
+      discordClient.destroy();
+      discordClient = null;
+      currentUser = null;
     }
-
-    if (!disconnected) {
-      return res.status(400).json({
-        success: false,
-        message: 'Nenhum Rich Presence ativo'
-      });
-    }
-
-    res.json({
+    res.json({ 
       success: true,
       message: 'Rich Presence desativado'
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(500).json({ 
       success: false,
-      message: 'Erro ao desativar: ' + error.message
+      message: 'Erro ao desativar: ' + error.message 
     });
   }
 });
@@ -196,14 +149,9 @@ app.listen(port, '0.0.0.0', () => {
   console.log(`\n🎮 Discord RPC Panel rodando em http://0.0.0.0:${port}\n`);
 });
 
-process.on('SIGINT', async () => {
-  console.log('\nDesligando...');
-  for (const data of Object.values(clients)) {
-    try {
-      await data.client.destroy();
-    } catch (e) {
-      console.error('Erro ao desligar:', e.message);
-    }
+process.on('SIGINT', () => {
+  if (discordClient) {
+    discordClient.destroy();
   }
   process.exit(0);
 });
