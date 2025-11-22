@@ -1,37 +1,24 @@
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
 const RPC = require('discord-rpc');
+const readline = require('readline');
 require('dotenv').config();
 
-const app = express();
-const port = process.env.PORT || 5000;
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+const CLIENT_ID = '1199850289652691025'; // ID da aplicação Discord
 
 let rpcClient = null;
-let isConnected = false;
 
-const CLIENT_ID = '22ez0';
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
-async function setupRPC(token) {
+async function setupRPC() {
   try {
-    // Close existing connection if any
-    if (rpcClient) {
-      try {
-        await rpcClient.destroy();
-      } catch (e) {
-        console.log('Error destroying RPC:', e.message);
-      }
-    }
+    console.log('\n🎮 Conectando ao Discord...\n');
 
-    // Create new RPC client
     rpcClient = new RPC.Client({ transport: 'ipc' });
 
-    await rpcClient.connect();
-    isConnected = true;
+    await rpcClient.connect(CLIENT_ID);
+    console.log('✓ Conectado ao Discord!\n');
 
     // Set rich presence
     await rpcClient.setActivity({
@@ -47,52 +34,52 @@ async function setupRPC(token) {
           url: 'https://guns.lol/vgss'
         }
       ],
-      startTimestamp: Date.now()
+      startTimestamp: Date.now(),
+      instance: true
     });
 
-    return { success: true, message: 'Rich Presence ativado com sucesso!' };
+    console.log('✓ Rich Presence ATIVADO COM SUCESSO!\n');
+    console.log('📊 Status no Discord:');
+    console.log('   Título: lol');
+    console.log('   Subtítulo: by yz');
+    console.log('   Status: assistindo gore');
+    console.log('   Botão: clica aíkk → https://guns.lol/vgss\n');
+    console.log('Digite "sair" para desativar e sair do programa.\n');
+
   } catch (error) {
-    console.error('Error setting up RPC:', error);
-    isConnected = false;
-    throw error;
+    console.error('\n❌ ERRO ao conectar:', error.message);
+    console.log('\n⚠️  Certifique-se que:');
+    console.log('   1. Discord está aberto no seu computador');
+    console.log('   2. Você não está em modo offline\n');
+    process.exit(1);
   }
 }
 
-// API endpoint to activate rich presence
-app.post('/api/activate', async (req, res) => {
-  try {
-    const result = await setupRPC(req.body.token);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao ativar Rich Presence: ' + error.message 
-    });
-  }
-});
-
-// API endpoint to check status
-app.get('/api/status', (req, res) => {
-  res.json({ connected: isConnected });
-});
-
-// API endpoint to disconnect
-app.post('/api/disconnect', async (req, res) => {
-  try {
-    if (rpcClient) {
-      await rpcClient.destroy();
-      rpcClient = null;
-      isConnected = false;
+function askCommand() {
+  rl.question('> ', async (input) => {
+    if (input.toLowerCase() === 'sair') {
+      console.log('\nDesativando Rich Presence...');
+      if (rpcClient) {
+        await rpcClient.destroy();
+      }
+      console.log('✓ Desativado. Até logo!\n');
+      process.exit(0);
+    } else {
+      console.log('Comando desconhecido. Digite "sair" para sair.\n');
+      askCommand();
     }
-    res.json({ success: true, message: 'Rich Presence desativado' });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao desativar: ' + error.message 
-    });
-  }
-});
+  });
+}
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Servidor rodando em http://0.0.0.0:${port}`);
-});
+async function main() {
+  console.clear();
+  console.log('╔════════════════════════════════════════╗');
+  console.log('║   Discord Rich Presence Panel - lol   ║');
+  console.log('║              by yz                    ║');
+  console.log('╚════════════════════════════════════════╝\n');
+
+  await setupRPC();
+  askCommand();
+}
+
+main().catch(console.error);

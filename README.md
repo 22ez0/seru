@@ -1,66 +1,75 @@
-# Discord Rich Presence Panel
+# Discord Rich Presence Panel - lol
 
-Um painel web para ativar Discord Rich Presence usando seu token de conta.
+Um cliente local para ativar Discord Rich Presence com um clique!
 
-## Features
+## ⚠️ IMPORTANTE
 
-- 🎮 Painel intuitivo para gerenciar Rich Presence
-- 🎨 Design moderno e responsivo
-- ⚡ Ativação instantânea
-- 🔌 Botão clicável customizável
+**Esta aplicação deve ser executada NO SEU COMPUTADOR**, não em servidores. O Discord RPC funciona apenas localmente via IPC.
 
 ## Como usar
 
-1. Abra o painel
-2. Cole seu token do Discord
-3. Clique em "Ativar Rich Presence"
-4. Pronto! Seu status do Discord foi atualizado
+### 1️⃣ Instalar Node.js
 
-## Instalação Local
+Baixe em: https://nodejs.org/
+
+### 2️⃣ Clonar ou Baixar o Projeto
+
+```bash
+git clone https://github.com/22ez0/discord-rich-presence.git
+cd discord-rich-presence
+```
+
+### 3️⃣ Instalar Dependências
 
 ```bash
 npm install
+```
+
+### 4️⃣ Executar
+
+```bash
 npm start
 ```
 
-O painel estará disponível em `http://localhost:5000`
+### 5️⃣ Pronto!
 
-## Deploy no Render
-
-1. Faça fork deste repositório
-2. Acesse [render.com](https://render.com)
-3. Conecte seu repositório GitHub
-4. Selecione "Web Service"
-5. Configure:
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-6. Deploy!
-
-## Variáveis de Ambiente
-
-- `PORT` - Porta do servidor (padrão: 5000)
+O painel aparecerá no terminal. Certifique-se que:
+- ✅ Discord está aberto
+- ✅ Você está online (não em offline mode)
+- ✅ Node.js está instalado
 
 ## Rich Presence Configurado
 
-- Título: **lol**
-- Subtítulo: **by yz**
-- Status: **assistindo gore**
-- Botão: **clica aíkk** → https://guns.lol/vgss
+```
+Título:     lol
+Subtítulo:  by yz
+Status:     assistindo gore
+Botão:      clica aíkk → https://guns.lol/vgss
+```
 
-## ⚠️ Aviso de Segurança
+## Parar
 
-Nunca compartilhe seu token do Discord! Este token é pessoal e pode comprometer sua conta.
+Digite `sair` no terminal e pressione Enter.
+
+## Estrutura
+
+```
+discord-rich-presence/
+├── server.js          (aplicação principal)
+├── package.json       (dependências)
+└── README.md         (esta documentação)
+```
 
 ## Tecnologias
 
-- Node.js + Express
-- Discord RPC
-- HTML5 + CSS3 + Vanilla JavaScript
-
-## Licença
-
-ISC
+- Node.js
+- Discord RPC v4
+- CLI interativa
 
 ## Autor
 
 yz
+
+## License
+
+ISC
