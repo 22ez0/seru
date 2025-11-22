@@ -39,9 +39,9 @@ app.post('/api/activate', async (req, res) => {
         const presence = new RichPresence()
           .setStatus('online')
           .setApplicationId('22ez0')
-          .setName('assistindo gore')
+          .setName('lol')
           .setDetails('lol')
-          .setState('by yz')
+          .setState('assistindo gore')
           .setType('WATCHING')
           .setAssetsLargeImage('serufofa')
           .setAssetsLargeText('lol')
@@ -50,12 +50,14 @@ app.post('/api/activate', async (req, res) => {
           .setURL('https://guns.lol/vgss');
 
         // Adicionar buttons
-        presence.buttons = [
-          {
-            label: 'clica aíkk',
-            url: 'https://guns.lol/vgss'
-          }
-        ];
+        if (presence.buttons) {
+          presence.buttons = [
+            {
+              label: 'clica aíkk',
+              url: 'https://guns.lol/vgss'
+            }
+          ];
+        }
 
         const presenceData = presence.toData();
 
