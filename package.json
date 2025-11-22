@@ -1,0 +1,26 @@
+{
+  "name": "discord-rpc-panel",
+  "version": "1.0.0",
+  "description": "Discord Rich Presence Panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "discord",
+    "rich-presence",
+    "rpc"
+  ],
+  "author": "yz",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "discord-rpc": "^4.0.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
