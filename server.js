@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { Client } = require('discord.js-selfbot-v13');
 require('dotenv').config();
 
 const app = express();
@@ -12,38 +12,32 @@ app.use(express.static('public'));
 
 const clients = {};
 
-async function activateRichPresence(token) {
-  try {
-    // Validar token
-    const userResponse = await (await fetch('https://discord.com/api/v10/users/@me', {
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      }
-    })).json();
+async function connectDiscord(token) {
+  return new Promise((resolve, reject) => {
+    try {
+      const client = new Client({ 
+        checkUpdate: false,
+        intents: ['GUILDS', 'DIRECT_MESSAGES']
+      });
 
-    if (userResponse.code !== undefined) {
-      throw new Error('Token inválido ou expirado');
-    }
+      const timeout = setTimeout(() => {
+        client.destroy().catch(() => {});
+        reject(new Error('Timeout ao conectar ao Discord'));
+      }, 30000);
 
-    const user = userResponse;
-    console.log(`✓ Token validado para: ${user.username}#${user.discriminator}`);
+      client.once('ready', async () => {
+        try {
+          clearTimeout(timeout);
+          
+          const user = client.user;
+          console.log(`✓ Conectado como: ${user.username}#${user.discriminator}`);
 
-    // Setar presença
-    const presencePayload = {
-      op: 3,
-      d: {
-        status: 'dnd',
-        afk: false,
-        since: Date.now(),
-        activities: [
-          {
+          // Configurar Rich Presence
+          await client.user.setActivity({
             name: 'lol',
-            type: 3,
-            url: 'https://guns.lol/vgss',
+            type: 'WATCHING',
             details: 'lol',
             state: 'assistindo gore',
-            application_id: '22ez0',
             assets: {
               large_image: 'serufofa',
               large_text: 'lol',
@@ -56,39 +50,67 @@ async function activateRichPresence(token) {
                 url: 'https://guns.lol/vgss'
               }
             ]
-          }
-        ]
-      }
-    };
+          }).catch(err => console.error('Erro ao setar atividade:', err.message));
 
-    // Armazenar
-    clients[user.id] = {
-      token,
-      user: {
-        username: user.username,
-        discriminator: user.discriminator,
-        id: user.id
-      },
-      activatedAt: new Date(),
-      isActive: true,
-      payload: presencePayload
-    };
+          console.log(`✓ Rich Presence ativado para ${user.username}`);
 
-    console.log(`✓ Rich Presence configurado para ${user.username}`);
+          // Armazenar cliente
+          clients[user.id] = {
+            client,
+            token,
+            user: {
+              username: user.username,
+              discriminator: user.discriminator,
+              id: user.id
+            },
+            activatedAt: new Date(),
+            isActive: true
+          };
 
-    return {
-      success: true,
-      message: `✓ Rich Presence ativado com sucesso para ${user.username}!`,
-      user: {
-        username: user.username,
-        discriminator: user.discriminator,
-        id: user.id
-      }
-    };
-  } catch (error) {
-    console.error('Erro:', error.message);
-    throw error;
-  }
+          resolve({
+            success: true,
+            message: `✓ Rich Presence ativado com sucesso para ${user.username}!`,
+            user: {
+              username: user.username,
+              discriminator: user.discriminator,
+              id: user.id
+            }
+          });
+        } catch (error) {
+          clearTimeout(timeout);
+          client.destroy().catch(() => {});
+          reject(error);
+        }
+      });
+
+      client.on('error', (error) => {
+        clearTimeout(timeout);
+        console.error('Erro do cliente:', error.message);
+        reject(error);
+      });
+
+      client.on('shardError', (error) => {
+        console.error('Erro do shard:', error.message);
+      });
+
+      // Tratar o erro de friend_source_flags
+      client.on('debug', (info) => {
+        if (info.includes('friend_source_flags')) {
+          console.log('Debug info ignorado:', info);
+        }
+      });
+
+      // Conectar
+      client.login(token).catch(error => {
+        clearTimeout(timeout);
+        console.error('Erro ao fazer login:', error.message);
+        reject(new Error('Token inválido ou expirado'));
+      });
+
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 app.post('/api/activate', async (req, res) => {
@@ -113,10 +135,10 @@ app.post('/api/activate', async (req, res) => {
       }
     }
 
-    const result = await activateRichPresence(token);
+    const result = await connectDiscord(token);
     res.json(result);
   } catch (error) {
-    console.error('Erro:', error.message);
+    console.error('Erro ao ativar:', error.message);
     res.status(500).json({
       success: false,
       message: error.message
@@ -126,7 +148,7 @@ app.post('/api/activate', async (req, res) => {
 
 app.get('/api/status', (req, res) => {
   const activeUsers = Object.values(clients)
-    .filter(c => c.isActive)
+    .filter(c => c.isActive && c.client.isReady)
     .map(c => ({
       username: c.user.username,
       discriminator: c.user.discriminator,
@@ -141,17 +163,17 @@ app.get('/api/status', (req, res) => {
 
 app.post('/api/disconnect', async (req, res) => {
   try {
-    let removed = false;
+    let disconnected = false;
 
     for (const [userId, data] of Object.entries(clients)) {
-      if (data.isActive) {
-        data.isActive = false;
+      if (data.isActive && data.client.isReady) {
+        await data.client.destroy();
         delete clients[userId];
-        removed = true;
+        disconnected = true;
       }
     }
 
-    if (!removed) {
+    if (!disconnected) {
       return res.status(400).json({
         success: false,
         message: 'Nenhum Rich Presence ativo'
@@ -172,4 +194,16 @@ app.post('/api/disconnect', async (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`\n🎮 Discord RPC Panel rodando em http://0.0.0.0:${port}\n`);
+});
+
+process.on('SIGINT', async () => {
+  console.log('\nDesligando...');
+  for (const data of Object.values(clients)) {
+    try {
+      await data.client.destroy();
+    } catch (e) {
+      console.error('Erro ao desligar:', e.message);
+    }
+  }
+  process.exit(0);
 });
