@@ -106,23 +106,25 @@ async function checkStatus() {
   try {
     const response = await fetch('/api/status');
     const data = await response.json();
-    updateStatus(data.connected, data.user);
+    if (data.users.length > 0) {
+      updateStatus(data.connected, data.users[0]);
+    } else {
+      updateStatus(false, null);
+    }
   } catch (error) {
     console.error('Erro ao verificar status:', error);
   }
 }
 
 function updateStatus(connected, user = null) {
-  if (connected) {
+  if (connected && user) {
     statusDot.classList.remove('inactive');
     statusDot.classList.add('active');
     statusText.textContent = 'Conectado';
     statusText.style.color = '#43b581';
     
-    if (user) {
-      userInfo.textContent = `${user.username}#${user.discriminator}`;
-      userInfo.style.display = 'inline-block';
-    }
+    userInfo.textContent = `${user.username}#${user.discriminator}`;
+    userInfo.style.display = 'inline-block';
   } else {
     statusDot.classList.remove('active');
     statusDot.classList.add('inactive');

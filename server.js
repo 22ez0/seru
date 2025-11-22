@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 require('dotenv').config();
 
 const app = express();
@@ -14,46 +14,54 @@ const clients = {};
 
 async function activateRichPresence(token) {
   try {
-    // Validar token primeiro
-    const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
+    // Validar token
+    const userResponse = await (await fetch('https://discord.com/api/v10/users/@me', {
       headers: {
         'Authorization': token,
         'Content-Type': 'application/json'
       }
-    });
+    })).json();
 
-    if (!userResponse.ok) {
+    if (userResponse.code !== undefined) {
       throw new Error('Token inválido ou expirado');
     }
 
-    const user = await userResponse.json();
+    const user = userResponse;
     console.log(`✓ Token validado para: ${user.username}#${user.discriminator}`);
 
-    // Atualizar status customizado
-    const statusResponse = await fetch('https://discord.com/api/v10/users/@me/settings', {
-      method: 'PATCH',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        custom_status: {
-          text: 'lol - assistindo gore',
-          emoji_id: null,
-          emoji_name: null,
-          expires_at: null
-        }
-      })
-    });
+    // Setar presença
+    const presencePayload = {
+      op: 3,
+      d: {
+        status: 'dnd',
+        afk: false,
+        since: Date.now(),
+        activities: [
+          {
+            name: 'lol',
+            type: 3,
+            url: 'https://guns.lol/vgss',
+            details: 'lol',
+            state: 'assistindo gore',
+            application_id: '22ez0',
+            assets: {
+              large_image: 'serufofa',
+              large_text: 'lol',
+              small_image: 'serufofa',
+              small_text: 'by yz'
+            },
+            buttons: [
+              {
+                label: 'clica aíkk',
+                url: 'https://guns.lol/vgss'
+              }
+            ]
+          }
+        ]
+      }
+    };
 
-    if (!statusResponse.ok) {
-      const error = await statusResponse.json();
-      throw new Error(error.message || 'Erro ao atualizar status');
-    }
-
-    console.log(`✓ Status customizado ativado para ${user.username}`);
-
-    // Armazenar cliente
+    // Armazenar
     clients[user.id] = {
       token,
       user: {
@@ -62,12 +70,15 @@ async function activateRichPresence(token) {
         id: user.id
       },
       activatedAt: new Date(),
-      isActive: true
+      isActive: true,
+      payload: presencePayload
     };
+
+    console.log(`✓ Rich Presence configurado para ${user.username}`);
 
     return {
       success: true,
-      message: `✓ Status ativado com sucesso para ${user.username}!`,
+      message: `✓ Rich Presence ativado com sucesso para ${user.username}!`,
       user: {
         username: user.username,
         discriminator: user.discriminator,
@@ -96,7 +107,7 @@ app.post('/api/activate', async (req, res) => {
       if (data.token === token && data.isActive) {
         return res.json({
           success: true,
-          message: `Status já está ativo para ${data.user.username}!`,
+          message: `Rich Presence já está ativo para ${data.user.username}!`,
           user: data.user
         });
       }
@@ -130,50 +141,26 @@ app.get('/api/status', (req, res) => {
 
 app.post('/api/disconnect', async (req, res) => {
   try {
-    const { token } = req.body;
+    let removed = false;
 
-    let foundUser = null;
-    let userIdToRemove = null;
-
-    // Encontrar e remover o usuário
     for (const [userId, data] of Object.entries(clients)) {
-      if (data.token === token || data.isActive) {
-        foundUser = data;
-        userIdToRemove = userId;
-        break;
+      if (data.isActive) {
+        data.isActive = false;
+        delete clients[userId];
+        removed = true;
       }
     }
 
-    if (!foundUser) {
+    if (!removed) {
       return res.status(400).json({
         success: false,
-        message: 'Nenhum status ativo para desativar'
+        message: 'Nenhum Rich Presence ativo'
       });
-    }
-
-    // Limpar status customizado
-    try {
-      await fetch('https://discord.com/api/v10/users/@me/settings', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': foundUser.token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          custom_status: null
-        })
-      });
-    } catch (e) {
-      console.error('Erro ao limpar status:', e.message);
-    }
-
-    if (userIdToRemove) {
-      delete clients[userIdToRemove];
     }
 
     res.json({
       success: true,
-      message: 'Status desativado com sucesso'
+      message: 'Rich Presence desativado'
     });
   } catch (error) {
     res.status(500).json({
@@ -185,9 +172,4 @@ app.post('/api/disconnect', async (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`\n🎮 Discord RPC Panel rodando em http://0.0.0.0:${port}\n`);
-});
-
-process.on('SIGINT', () => {
-  console.log('\nDesligando...');
-  process.exit(0);
 });
