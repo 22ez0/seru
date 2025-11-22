@@ -35,10 +35,10 @@ app.post('/api/activate', async (req, res) => {
       try {
         console.log('Conectando ao Discord...');
         
-        // Criar Rich Presence
+        // Criar Rich Presence com o ID correto
         const presence = new RichPresence()
           .setStatus('online')
-          .setApplicationId('22ez0')
+          .setApplicationId('1441872329092235296')
           .setName('lol')
           .setDetails('lol')
           .setState('assistindo gore')
@@ -50,14 +50,12 @@ app.post('/api/activate', async (req, res) => {
           .setURL('https://guns.lol/vgss');
 
         // Adicionar buttons
-        if (presence.buttons) {
-          presence.buttons = [
-            {
-              label: 'clica aíkk',
-              url: 'https://guns.lol/vgss'
-            }
-          ];
-        }
+        presence.buttons = [
+          {
+            label: 'clica aíkk',
+            url: 'https://guns.lol/vgss'
+          }
+        ];
 
         const presenceData = presence.toData();
 
