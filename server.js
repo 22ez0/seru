@@ -51,27 +51,17 @@ app.post('/api/activate', async (req, res) => {
           console.log('Asset não encontrado, usando nome:', ASSET_NAME);
         }
         
-        // Criar Rich Presence
+        // Criar Rich Presence seguindo o padrão correto
         const presence = new RichPresence()
-          .setStatus('online')
           .setApplicationId(APPLICATION_ID)
+          .setStatus('online')
+          .setType('WATCHING')
           .setName('gore')
           .setDetails('lol')
           .setState('by yz')
-          .setType('WATCHING')
           .setAssetsLargeImage(assetId)
           .setAssetsLargeText('lol')
-          .setAssetsSmallImage(assetId)
-          .setAssetsSmallText('by yz')
-          .setURL('https://guns.lol/vgss');
-
-        // Adicionar buttons
-        presence.buttons = [
-          {
-            label: 'entra aikk',
-            url: 'https://guns.lol/vgss'
-          }
-        ];
+          .addButton('entra aikk', 'https://guns.lol/vgss');
 
         const presenceData = presence.toData();
 
