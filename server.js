@@ -157,6 +157,36 @@ app.get('/', (req, res) => {
   });
 });
 
+// Endpoint para fazer commit automaticamente
+app.post('/api/commit', async (req, res) => {
+  try {
+    const { execSync } = require('child_process');
+    
+    // Add all files
+    execSync('git add .', { cwd: process.cwd() });
+    
+    // Create commit
+    const commitMsg = `🚀 Discord RPC Panel Deploy Ready
+
+- Health check endpoint for UptimeRobot
+- Auto-deploy configuration
+- Mobile responsive interface 100% working
+- Ready for Render deployment`;
+    
+    execSync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, { cwd: process.cwd() });
+    
+    res.json({
+      success: true,
+      message: '✓ Commit realizado com sucesso! Agora faça: git push origin main'
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'Erro ao fazer commit: ' + error.message
+    });
+  }
+});
+
 app.post('/api/disconnect', (req, res) => {
   try {
     if (discordClient) {
