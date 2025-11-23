@@ -157,32 +157,163 @@ app.get('/', (req, res) => {
   });
 });
 
-// Endpoint para fazer commit automaticamente
+// Endpoint para fazer commit automaticamente via GitHub API
 app.post('/api/commit', async (req, res) => {
   try {
-    const { execSync } = require('child_process');
+    const { Octokit } = require("@octokit/rest");
+    const fs = require('fs');
+    const path = require('path');
     
-    // Add all files
-    execSync('git add .', { cwd: process.cwd() });
+    // Pega informações do Replit
+    const gitRemote = process.env.GIT_REMOTE || (require('child_process').execSync('git config --get remote.origin.url', { encoding: 'utf-8' }).trim());
     
-    // Create commit
-    const commitMsg = `🚀 Discord RPC Panel Deploy Ready
+    // Parse do repo owner/name da URL
+    const match = gitRemote.match(/github\.com[:/]([^/]+)\/([^/\s.]+)/);
+    if (!match) {
+      return res.json({
+        success: false,
+        message: 'Repositório GitHub não encontrado'
+      });
+    }
+    
+    const [, owner, repoName] = match;
+    const repo = repoName.replace('.git', '');
+    
+    // Pega o token do GitHub (armazenado em GIT_TOKEN ou secret do Replit)
+    const token = process.env.GIT_TOKEN || process.env.GITHUB_TOKEN;
+    
+    if (!token) {
+      return res.json({
+        success: false,
+        message: '❌ Token do GitHub não encontrado. Configure a variável GIT_TOKEN nos secrets do Replit'
+      });
+    }
+    
+    const octokit = new Octokit({ auth: token });
+    
+    // Função para ler arquivo
+    const readFile = (filePath) => {
+      try {
+        return fs.readFileSync(filePath, 'utf8');
+      } catch {
+        return null;
+      }
+    };
+    
+    // Arquivos modificados
+    const files = [
+      { path: 'server.js', content: readFile('server.js') },
+      { path: 'README.md', content: readFile('README.md') },
+      { path: 'package.json', content: readFile('package.json') }
+    ].filter(f => f.content !== null);
+    
+    // Mensagem do commit
+    const commitMessage = `🚀 Discord RPC Panel Deploy Ready
 
 - Health check endpoint for UptimeRobot
-- Auto-deploy configuration
+- Auto-deploy configuration  
 - Mobile responsive interface 100% working
 - Ready for Render deployment`;
     
-    execSync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, { cwd: process.cwd() });
+    // Faz commit via API
+    let fileChanges = {
+      additions: []
+    };
+    
+    for (const file of files) {
+      fileChanges.additions.push({
+        path: file.path,
+        contents: Buffer.from(file.content).toString('base64')
+      });
+    }
+    
+    // Pega o SHA do commit atual
+    const { data: branch } = await octokit.rest.repos.getBranch({
+      owner,
+      repo,
+      branch: 'main'
+    });
+    
+    const expectedHeadOid = branch.commit.sha;
+    
+    // Cria commit
+    const { data: commitResult } = await octokit.graphql(`
+      mutation {
+        createCommitOnBranch(input: {
+          branch: {
+            repositoryNameWithOwner: "${owner}/${repo}",
+            branchName: "main"
+          },
+          message: {
+            headline: "${commitMessage.split('\n')[0]}"
+          },
+          fileChanges: {
+            additions: [
+              ${fileChanges.additions.map(f => `{
+                path: "${f.path}",
+                contents: "${f.contents}"
+              }`).join(',\n')}
+            ]
+          },
+          expectedHeadOid: "${expectedHeadOid}"
+        }) {
+          commit {
+            oid
+            url
+          }
+        }
+      }
+    `, {
+      headers: {
+        authorization: `token ${token}`
+      }
+    }).catch(async (error) => {
+      // Fallback para REST API se GraphQL falhar
+      console.log('GraphQL failed, trying REST API...');
+      
+      for (const file of files) {
+        try {
+          const fileData = await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path: file.path,
+            ref: 'main'
+          });
+          
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo,
+            path: file.path,
+            message: commitMessage.split('\n')[0],
+            content: Buffer.from(file.content).toString('base64'),
+            sha: fileData.data.sha,
+            branch: 'main'
+          });
+        } catch {
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo,
+            path: file.path,
+            message: commitMessage.split('\n')[0],
+            content: Buffer.from(file.content).toString('base64'),
+            branch: 'main'
+          });
+        }
+      }
+    });
     
     res.json({
       success: true,
-      message: '✓ Commit realizado com sucesso! Agora faça: git push origin main'
+      message: '✓ Commit realizado com sucesso via GitHub API! 🎉',
+      repo: `${owner}/${repo}`,
+      details: 'Seus arquivos foram enviados para o GitHub. Deploy no Render agora!'
     });
+    
   } catch (error) {
+    console.error('Commit error:', error);
     res.json({
       success: false,
-      message: 'Erro ao fazer commit: ' + error.message
+      message: `Erro ao fazer commit: ${error.message}. Configure GIT_TOKEN nos secrets!`
     });
   }
 });
