@@ -318,6 +318,53 @@ app.post('/api/commit', async (req, res) => {
   }
 });
 
+// Endpoint para fazer PUSH para o GitHub
+app.get('/api/push', async (req, res) => {
+  try {
+    const { execSync } = require('child_process');
+    const token = req.query.token || process.env.GIT_TOKEN;
+    
+    if (!token) {
+      return res.json({
+        success: false,
+        message: '❌ Token do GitHub não fornecido. Use: /api/push?token=SEU_TOKEN'
+      });
+    }
+    
+    // Faz o push diretamente com as credenciais na URL
+    try {
+      const output = execSync(`cd /home/runner/workspace && git push "https://22ez0:${token}@github.com/22ez0/seru.git" main 2>&1`, { 
+        encoding: 'utf-8',
+        timeout: 30000 
+      });
+      
+      res.json({
+        success: true,
+        message: '✓ Push realizado com sucesso! 🎉',
+        output: output.substring(0, 200),
+        details: 'Seus commits estão no GitHub! Agora é só fazer deploy no Render.'
+      });
+    } catch (pushError) {
+      if (pushError.message.includes('Everything up-to-date')) {
+        res.json({
+          success: true,
+          message: '✓ Seu código já estava atualizado no GitHub! 🎉',
+          details: 'Agora é só fazer deploy no Render.'
+        });
+      } else {
+        throw pushError;
+      }
+    }
+    
+  } catch (error) {
+    res.json({
+      success: false,
+      message: `❌ Erro ao fazer push: ${error.message.substring(0, 100)}`,
+      details: 'Verifique se o token é válido, tem permissão no repo e a URL está correta.'
+    });
+  }
+});
+
 app.post('/api/disconnect', (req, res) => {
   try {
     if (discordClient) {

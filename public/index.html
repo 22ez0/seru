@@ -56,6 +56,28 @@
             <a href="https://guns.lol/vgss" target="_blank" class="preview-button">clica aíkk</a>
           </div>
         </div>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #333;">
+
+        <div class="deployment-section">
+          <h3>🚀 Deploy no GitHub</h3>
+          <p class="hint">Faça push do código para o GitHub e depois deploy no Render</p>
+          
+          <div class="input-group">
+            <label for="githubToken">Token do GitHub:</label>
+            <input 
+              type="password" 
+              id="githubToken" 
+              placeholder="Cole seu GitHub token aqui..."
+              autocomplete="off"
+            >
+          </div>
+
+          <button id="pushBtn" class="btn btn-accent">
+            <span class="btn-text">🚀 FAZER PUSH AGORA</span>
+            <span class="btn-loader" style="display: none;">⏳</span>
+          </button>
+        </div>
       </div>
 
       <div id="message" class="message"></div>

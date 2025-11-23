@@ -1,6 +1,8 @@
 const tokenInput = document.getElementById('tokenInput');
 const activateBtn = document.getElementById('activateBtn');
 const deactivateBtn = document.getElementById('deactivateBtn');
+const githubToken = document.getElementById('githubToken');
+const pushBtn = document.getElementById('pushBtn');
 const messageDiv = document.getElementById('message');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -13,6 +15,12 @@ setInterval(checkStatus, 5000);
 
 activateBtn.addEventListener('click', activate);
 deactivateBtn.addEventListener('click', deactivate);
+pushBtn.addEventListener('click', pushToGitHub);
+githubToken.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !isLoading) {
+    pushToGitHub();
+  }
+});
 
 tokenInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter' && !isLoading) {
@@ -106,8 +114,8 @@ async function checkStatus() {
   try {
     const response = await fetch('/api/status');
     const data = await response.json();
-    if (data.users.length > 0) {
-      updateStatus(data.connected, data.users[0]);
+    if (data.connected && data.user) {
+      updateStatus(true, data.user);
     } else {
       updateStatus(false, null);
     }
@@ -131,6 +139,49 @@ function updateStatus(connected, user = null) {
     statusText.textContent = 'Desconectado';
     statusText.style.color = '#b0b0b0';
     userInfo.style.display = 'none';
+  }
+}
+
+async function pushToGitHub() {
+  const token = githubToken.value.trim();
+  
+  if (!token) {
+    showMessage('Por favor, insira seu token do GitHub', 'error');
+    return;
+  }
+
+  if (isLoading) return;
+  
+  isLoading = true;
+  pushBtn.disabled = true;
+  const btnText = pushBtn.querySelector('.btn-text');
+  const btnLoader = pushBtn.querySelector('.btn-loader');
+  
+  btnText.style.display = 'none';
+  btnLoader.style.display = 'inline-block';
+
+  try {
+    const response = await fetch(`/api/push?token=${encodeURIComponent(token)}`);
+    const data = await response.json();
+
+    if (data.success) {
+      showMessage(`✓ ${data.message}`, 'success');
+      githubToken.disabled = true;
+      pushBtn.disabled = true;
+      
+      setTimeout(() => {
+        showMessage('🎉 Agora faça deploy no Render: https://render.com', 'success');
+      }, 2000);
+    } else {
+      showMessage(`✗ ${data.message}`, 'error');
+    }
+  } catch (error) {
+    showMessage('✗ Erro: ' + error.message, 'error');
+  } finally {
+    isLoading = false;
+    btnText.style.display = 'inline-block';
+    btnLoader.style.display = 'none';
+    pushBtn.disabled = false;
   }
 }
 
