@@ -58,8 +58,15 @@ app.post('/api/activate', async (req, res) => {
           .setDetails('lol')
           .setState('by yz')
           .setAssetsLargeImage(assetId)
-          .setAssetsLargeText('lol')
-          .addButton('entra aikk', 'https://guns.lol/vgss');
+          .setAssetsLargeText('lol');
+
+        // Adicionar button
+        rpc.buttons = [
+          {
+            label: 'entra aikk',
+            url: 'https://guns.lol/vgss'
+          }
+        ];
 
         const presenceData = rpc.toDiscord();
 
