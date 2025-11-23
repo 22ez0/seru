@@ -1,8 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const { Client } = require('discord.js-selfbot-v13');
-const { RichPresence, Util } = require('discord.js-selfbot-rpc');
+const { Client, RichPresence } = require('discord.js-selfbot-v13');
+const { Util } = require('discord.js-selfbot-rpc');
 require('dotenv').config();
 
 const app = express();
@@ -51,7 +50,7 @@ app.post('/api/activate', async (req, res) => {
           console.log('Asset não encontrado, usando nome:', ASSET_NAME);
         }
         
-        // Criar Rich Presence
+        // Criar Rich Presence usando a classe correta
         const presence = new RichPresence()
           .setApplicationId(APPLICATION_ID)
           .setStatus('online')
@@ -60,32 +59,32 @@ app.post('/api/activate', async (req, res) => {
           .setDetails('lol')
           .setState('by yz')
           .setAssetsLargeImage(assetId)
-          .setAssetsLargeText('lol')
-          .setURL('https://guns.lol/vgss');
+          .setAssetsLargeText('lol');
 
-        let presenceData = presence.toData();
+        // Adicionar buttons
+        presence.buttons = [
+          {
+            label: 'entra aikk',
+            url: 'https://guns.lol/vgss'
+          }
+        ];
 
-        // Adicionar buttons manualmente
-        if (presenceData.activities && presenceData.activities[0]) {
-          presenceData.activities[0].buttons = [
-            {
-              label: 'entra aikk',
-              url: 'https://guns.lol/vgss'
-            }
-          ];
-        }
+        const presenceData = presence.toData();
 
         console.log('Aplicando Rich Presence...');
         console.log('Presence data:', JSON.stringify(presenceData, null, 2));
         
+        // Enviar presence
         discordClient.user.setPresence(presenceData);
+        
         console.log('✓ Rich Presence aplicado com sucesso!');
 
         const user = discordClient.user;
         currentUser = {
           id: user.id,
           username: user.username,
-          discriminator: user.discriminator
+          discriminator: user.discriminator,
+          tag: user.tag
         };
 
         console.log(`✓ Conectado como: ${user.tag}`);
@@ -107,7 +106,7 @@ app.post('/api/activate', async (req, res) => {
         if (currentUser) {
           res.json({
             success: true,
-            message: `✓ Rich Presence ativado com sucesso para ${currentUser.username}!`,
+            message: `✓ Rich Presence ativado com sucesso para ${currentUser.tag}!`,
             user: currentUser
           });
         } else {
