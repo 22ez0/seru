@@ -87,10 +87,13 @@ app.post('/api/activate', async (req, res) => {
                 assets: {
                   large_image: assetId,
                   large_text: 'lol'
+                },
+                timestamps: {
+                  start: Date.now()
                 }
               }
             ],
-            status: 'online',
+            status: 'dnd', // usar DND pra forçar o ícone roxo
             afk: false
           };
 
