@@ -140,6 +140,23 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Health check endpoint para UptimeRobot
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Discord RPC Panel',
+    version: '1.0.0',
+    status: 'online'
+  });
+});
+
 app.post('/api/disconnect', (req, res) => {
   try {
     if (discordClient) {
