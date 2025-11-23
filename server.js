@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const { Client, RichPresence } = require('discord.js-selfbot-v13');
-const { Util } = require('discord.js-selfbot-rpc');
+const { Client } = require('discord.js-selfbot-v13');
+const { RichPresence, Util } = require('discord.js-selfbot-rpc');
 require('dotenv').config();
 
 const app = express();
@@ -50,7 +50,7 @@ app.post('/api/activate', async (req, res) => {
           console.log('Asset não encontrado, usando nome:', ASSET_NAME);
         }
         
-        // Criar Rich Presence com .addButton() - método correto
+        // Criar Rich Presence - usando RichPresence do discord.js-selfbot-rpc
         const rpc = new RichPresence()
           .setApplicationId(APPLICATION_ID)
           .setStatus('online')
@@ -60,16 +60,23 @@ app.post('/api/activate', async (req, res) => {
           .setState('by yz')
           .setAssetsLargeImage(assetId)
           .setAssetsLargeText('lol')
-          .addButton('entra aikk', 'https://guns.lol/vgss')
-          .setTimestamp();
+          .setURL('https://guns.lol/vgss');
 
-        const presenceData = rpc.toJSON();
+        // Adicionar buttons - método correto da biblioteca
+        rpc.buttons = [
+          {
+            label: 'entra aikk',
+            url: 'https://guns.lol/vgss'
+          }
+        ];
+
+        const presenceData = rpc.toData();
 
         console.log('Aplicando Rich Presence...');
         console.log('Presence data:', JSON.stringify(presenceData, null, 2));
         
-        // Enviar presence
-        discordClient.user.setActivity(presenceData);
+        // Enviar presence usando setPresence
+        discordClient.user.setPresence(presenceData);
         
         console.log('✓ Rich Presence aplicado com sucesso!');
 
