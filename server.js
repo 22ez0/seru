@@ -55,8 +55,8 @@ app.post('/api/activate', async (req, res) => {
           tag: user.tag
         };
 
-        // Agora conectar com RPC client separado
-        console.log('🎮 Conectando RPC client para Rich Presence...');
+        // Aplicar status de atividade simples
+        console.log('🎮 Aplicando status de atividade...');
         
         try {
           // Buscar asset
@@ -71,56 +71,34 @@ app.post('/api/activate', async (req, res) => {
             console.log('⚠️ Asset não encontrado, usando nome:', ASSET_NAME);
           }
           
-          // Criar Rich Presence com RPC
-          const rpc = new RichPresence()
-            .setApplicationId(APPLICATION_ID)
-            .setStatus('online')
-            .setType('WATCHING')
-            .setName('gore')
-            .setDetails('lol')
-            .setState('by yz')
-            .setAssetsLargeImage(assetId)
-            .setAssetsLargeText('lol');
-
-          // Tentar via RPC client
-          if (rpcClient) {
-            try { rpcClient.destroy(); } catch(e) {}
-          }
-          
-          rpcClient = new (require('discord.js-selfbot-rpc').Client)({ transport: 'ipc' });
-          
-          rpcClient.on('ready', async () => {
-            console.log('✅ RPC Client conectado!');
-            
-            try {
-              const presenceData = rpc.toData();
-              
-              // Adicionar button
-              if (presenceData.activities && presenceData.activities[0]) {
-                presenceData.activities[0].buttons = [
-                  {
-                    label: 'entra aikk',
-                    url: 'https://guns.lol/vgss'
-                  }
-                ];
+          // Configurar presença com status roxo (watching)
+          const presenceData = {
+            activities: [
+              {
+                type: 3, // WATCHING (roxo)
+                name: 'gore',
+                details: 'lol',
+                state: 'by yz',
+                application_id: APPLICATION_ID,
+                assets: {
+                  large_image: assetId,
+                  large_text: 'lol'
+                }
               }
+            ],
+            status: 'online',
+            afk: false
+          };
 
-              console.log('🎮 Aplicando Rich Presence via RPC...');
-              console.log('📊 Dados:', JSON.stringify(presenceData, null, 2));
-              
-              // Set via RPC
-              await rpcClient.setActivity(presenceData.activities[0]);
-              
-              console.log('✅ Rich Presence aplicado com sucesso via RPC!');
-            } catch (rpcError) {
-              console.error('❌ Erro ao aplicar RPC:', rpcError.message);
-            }
-          });
-
-          rpcClient.login({ clientId: APPLICATION_ID });
+          console.log('📊 Dados:', JSON.stringify(presenceData, null, 2));
           
-        } catch (rpcSetupError) {
-          console.warn('⚠️ RPC setup falhou, Rich Presence pode não aparecer:', rpcSetupError.message);
+          // Aplicar presença
+          await discordClient.user.setPresence(presenceData);
+          
+          console.log('✅ Status de atividade aplicado com sucesso!');
+        } catch (presenceError) {
+          console.error('❌ Erro ao aplicar status:', presenceError.message);
+          console.error('Stack:', presenceError.stack);
         }
 
         console.log(`✅ Conectado como: ${user.tag}`);
