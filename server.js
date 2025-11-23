@@ -59,18 +59,19 @@ app.post('/api/activate', async (req, res) => {
           .setDetails('lol')
           .setState('by yz')
           .setAssetsLargeImage(assetId)
-          .setAssetsLargeText('lol')
-          .setURL('https://guns.lol/vgss');
+          .setAssetsLargeText('lol');
 
-        // Adicionar buttons - método correto da biblioteca
-        rpc.buttons = [
-          {
-            label: 'entra aikk',
-            url: 'https://guns.lol/vgss'
-          }
-        ];
+        let presenceData = rpc.toData();
 
-        const presenceData = rpc.toData();
+        // Adicionar buttons manualmente ao activity
+        if (presenceData.activities && presenceData.activities[0]) {
+          presenceData.activities[0].buttons = [
+            {
+              label: 'entra aikk',
+              url: 'https://guns.lol/vgss'
+            }
+          ];
+        }
 
         console.log('Aplicando Rich Presence...');
         console.log('Presence data:', JSON.stringify(presenceData, null, 2));
