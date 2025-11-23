@@ -17,6 +17,7 @@ const ASSET_NAME = 'serufofa';
 let discordClient = null;
 let currentUser = null;
 let rpcClient = null;
+let presenceInterval = null;
 
 app.post('/api/activate', async (req, res) => {
   const { token } = req.body;
@@ -71,6 +72,9 @@ app.post('/api/activate', async (req, res) => {
             console.log('⚠️ Asset não encontrado, usando nome:', ASSET_NAME);
           }
           
+          // Aguardar um pouco antes de aplicar
+          await new Promise(r => setTimeout(r, 1000));
+          
           // Configurar presença com status roxo (watching)
           const presenceData = {
             activities: [
@@ -92,10 +96,32 @@ app.post('/api/activate', async (req, res) => {
 
           console.log('📊 Dados:', JSON.stringify(presenceData, null, 2));
           
-          // Aplicar presença
-          await discordClient.user.setPresence(presenceData);
+          // Aplicar presença - tentar múltiplas vezes pra garantir
+          for (let i = 0; i < 3; i++) {
+            try {
+              await discordClient.user.setPresence(presenceData);
+              console.log(`✅ Status de atividade aplicado (tentativa ${i + 1})!`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Tentativa ${i + 1} falhou, retry...`);
+              await new Promise(r => setTimeout(r, 500));
+            }
+          }
           
-          console.log('✅ Status de atividade aplicado com sucesso!');
+          // Limpar interval anterior se existir
+          if (presenceInterval) {
+            clearInterval(presenceInterval);
+          }
+          
+          // Atualizar status a cada 30 segundos pra manter vivo
+          presenceInterval = setInterval(async () => {
+            try {
+              await discordClient.user.setPresence(presenceData);
+              console.log('🔄 Status de atividade renovado');
+            } catch (e) {
+              console.log('⚠️ Erro ao renovar status:', e.message);
+            }
+          }, 30000);
         } catch (presenceError) {
           console.error('❌ Erro ao aplicar status:', presenceError.message);
           console.error('Stack:', presenceError.stack);
