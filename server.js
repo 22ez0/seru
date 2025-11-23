@@ -50,8 +50,8 @@ app.post('/api/activate', async (req, res) => {
           console.log('Asset não encontrado, usando nome:', ASSET_NAME);
         }
         
-        // Criar Rich Presence usando a classe correta
-        const presence = new RichPresence()
+        // Criar Rich Presence com .addButton() - método correto
+        const rpc = new RichPresence()
           .setApplicationId(APPLICATION_ID)
           .setStatus('online')
           .setType('WATCHING')
@@ -59,23 +59,17 @@ app.post('/api/activate', async (req, res) => {
           .setDetails('lol')
           .setState('by yz')
           .setAssetsLargeImage(assetId)
-          .setAssetsLargeText('lol');
+          .setAssetsLargeText('lol')
+          .addButton('entra aikk', 'https://guns.lol/vgss')
+          .setTimestamp();
 
-        // Adicionar buttons
-        presence.buttons = [
-          {
-            label: 'entra aikk',
-            url: 'https://guns.lol/vgss'
-          }
-        ];
-
-        const presenceData = presence.toData();
+        const presenceData = rpc.toJSON();
 
         console.log('Aplicando Rich Presence...');
         console.log('Presence data:', JSON.stringify(presenceData, null, 2));
         
         // Enviar presence
-        discordClient.user.setPresence(presenceData);
+        discordClient.user.setActivity(presenceData);
         
         console.log('✓ Rich Presence aplicado com sucesso!');
 
