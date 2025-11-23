@@ -75,12 +75,13 @@ app.post('/api/activate', async (req, res) => {
           // Aguardar um pouco antes de aplicar
           await new Promise(r => setTimeout(r, 1000));
           
-          // Configurar presença com status roxo (watching)
+          // Configurar presença com status roxo STREAMING (play icon)
           const presenceData = {
             activities: [
               {
-                type: 3, // WATCHING (roxo)
+                type: 1, // STREAMING (roxo com play)
                 name: 'gore',
+                url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // URL obrigatória para STREAMING
                 details: 'lol',
                 state: 'by yz',
                 application_id: APPLICATION_ID,
@@ -93,7 +94,7 @@ app.post('/api/activate', async (req, res) => {
                 }
               }
             ],
-            status: 'dnd', // usar DND pra forçar o ícone roxo
+            status: 'online',
             afk: false
           };
 
