@@ -32,22 +32,26 @@ app.post('/api/activate', async (req, res) => {
       discordClient.destroy();
     }
 
+    console.log('🔄 Iniciando login com token...');
     discordClient = new Client({ checkUpdate: false });
+    let loginSuccess = false;
 
     discordClient.once('ready', async () => {
       try {
-        console.log('Conectando ao Discord...');
+        loginSuccess = true;
+        console.log('✓ Cliente Discord pronto!');
+        console.log('👤 Usuário:', discordClient.user?.tag);
         
         // Buscar asset
         let assetId = ASSET_NAME;
         try {
           const asset = await Util.getAssets(APPLICATION_ID, ASSET_NAME);
-          console.log('Asset encontrado:', asset);
+          console.log('✓ Asset encontrado:', asset);
           if (asset?.id) {
             assetId = asset.id;
           }
         } catch (assetError) {
-          console.log('Asset não encontrado, usando nome:', ASSET_NAME);
+          console.log('⚠️ Asset não encontrado, usando nome:', ASSET_NAME);
         }
         
         // Criar Rich Presence
@@ -73,13 +77,13 @@ app.post('/api/activate', async (req, res) => {
           ];
         }
 
-        console.log('Aplicando Rich Presence...');
-        console.log('Presence data:', JSON.stringify(presenceData, null, 2));
+        console.log('🎮 Aplicando Rich Presence...');
+        console.log('📊 Dados:', JSON.stringify(presenceData, null, 2));
         
         // Enviar presence usando setPresence
         discordClient.user.setPresence(presenceData);
         
-        console.log('✓ Rich Presence aplicado com sucesso!');
+        console.log('✅ Rich Presence aplicado com sucesso!');
 
         const user = discordClient.user;
         currentUser = {
@@ -89,46 +93,50 @@ app.post('/api/activate', async (req, res) => {
           tag: user.tag
         };
 
-        console.log(`✓ Conectado como: ${user.tag}`);
+        console.log(`✅ Conectado como: ${user.tag}`);
       } catch (presenceError) {
-        console.error('Erro ao configurar presence:', presenceError.message);
+        console.error('❌ Erro ao configurar presence:', presenceError.message);
         console.error('Stack:', presenceError.stack);
       }
     });
 
     discordClient.on('error', (error) => {
-      console.error('Erro no cliente Discord:', error.message);
+      console.error('❌ Erro no cliente Discord:', error.message);
     });
 
+    console.log('🔑 Tentando fazer login...');
     await discordClient.login(token);
 
     // Aguardar a conexão estar pronta
     return new Promise((resolve) => {
       setTimeout(() => {
         if (currentUser) {
+          console.log('✅ Resposta com sucesso para cliente');
           res.json({
             success: true,
             message: `✓ Rich Presence ativado com sucesso para ${currentUser.tag}!`,
             user: currentUser
           });
         } else {
+          console.log('❌ Timeout - usuário não conectou');
           res.status(500).json({ 
             success: false,
-            message: 'Erro ao conectar ao Discord' 
+            message: 'Erro ao conectar ao Discord - token pode estar inválido ou expirado' 
           });
         }
         resolve();
-      }, 3000);
+      }, 4000);
     });
 
   } catch (error) {
-    console.error('Erro ao fazer login:', error.message);
+    console.error('❌ Erro ao fazer login:', error.message);
+    console.error('Stack:', error.stack);
     
     res.status(500).json({ 
       success: false,
-      message: error.message.includes('TOKEN_INVALID') 
-        ? 'Token inválido ou expirado' 
-        : 'Erro ao autenticar com o Discord: ' + error.message
+      message: error.message.includes('TOKEN_INVALID') || error.message.includes('invalid') 
+        ? '❌ Token inválido, expirado ou não é um selfbot token! Verifique se copiou corretamente.' 
+        : '❌ Erro ao autenticar: ' + error.message
     });
   }
 });
